@@ -36,7 +36,7 @@ export default function Login() {
     <div style={{ minHeight:"100vh", background:"#F8F9FF", display:"flex" }}>
 
       {/* Left — branding */}
-      <div style={{ width:"45%", background:"#13111E", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px", position:"relative", overflow:"hidden" }}>
+      <div className="auth-brand-panel" style={{ width:"45%", background:"#13111E", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"40px", position:"relative", overflow:"hidden" }}>
 
         {/* Background pattern */}
         <div style={{ position:"absolute", inset:0, backgroundImage:"radial-gradient(circle at 25% 25%, rgba(107,95,237,0.15) 0%, transparent 50%), radial-gradient(circle at 75% 75%, rgba(107,95,237,0.1) 0%, transparent 50%)" }} />
@@ -80,7 +80,7 @@ export default function Login() {
       </div>
 
       {/* Right — form */}
-      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
+      <div className="auth-form-panel" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
         <div style={{ width:"100%", maxWidth:400 }}>
 
           <h2 style={{ fontSize:24, fontWeight:700, color:"#111827", marginBottom:6, fontFamily:"Inter,sans-serif" }}>Welcome back</h2>

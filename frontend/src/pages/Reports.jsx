@@ -132,7 +132,7 @@ export default function Reports() {
             </div>
           )}
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+          <div className="rg-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
             <div>
               <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>Report Name</label>
               <input value={schedName} onChange={e => setSchedName(e.target.value)} placeholder="e.g. Weekly Sales Summary" style={{ width:"100%" }} />
@@ -147,7 +147,7 @@ export default function Reports() {
             </div>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:16 }}>
+          <div className="rg-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:16 }}>
             <div>
               <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>Frequency</label>
               <select value={frequency} onChange={e => setFrequency(e.target.value)} style={{ width:"100%" }}>
@@ -187,7 +187,7 @@ export default function Reports() {
               <Pin size={15} color="#6B5FED" /> Pinned Charts ({store.pinnedCharts.length})
             </h2>
           </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:14 }}>
+          <div className="rg-2col" style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:14 }}>
             {store.pinnedCharts.map(chart => (
               <div key={chart.id} style={{ border:"1px solid #E5E7EB", borderRadius:8, padding:14 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"start", marginBottom:10 }}>

@@ -170,7 +170,7 @@ export default function Analytics() {
       {hasCharts && (
         <>
           {/* Row 1: Histogram + By Region + Over Time + AI Insights */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:14, marginBottom:14 }}>
+          <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:14, marginBottom:14 }}>
 
             {/* Histogram */}
             <MiniChart title={`${targetCol} Distribution`}>
@@ -234,7 +234,7 @@ export default function Analytics() {
           </div>
 
           {/* Row 2: By Category + Correlation + Top Products */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
+          <div className="rg-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
 
             {/* By Category bar */}
             <MiniChart title={`${targetCol} by Category`}>

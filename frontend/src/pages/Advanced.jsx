@@ -84,7 +84,7 @@ export default function Advanced() {
       {tab === "anomaly" && (
         <>
           <div style={{ background:"white", border:"1px solid #E5E7EB", borderRadius:10, padding:20, marginBottom:20 }}>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:14, alignItems:"end" }}>
+            <div className="rg-fallback" style={{ display:"grid", gridTemplateColumns:"1fr 1fr auto", gap:14, alignItems:"end" }}>
               <div>
                 <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>Detection Method</label>
                 <select value={method} onChange={e => setMethod(e.target.value)} style={{ width:"100%" }}>
@@ -117,7 +117,7 @@ export default function Advanced() {
                 </div>
               ) : (
                 <>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}>
+                  <div className="rg-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}>
                     <div style={{ background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:10, padding:"16px 20px" }}>
                       <p style={{ fontSize:12, color:"#DC2626", margin:"0 0 4px" }}>Total Anomalies Found</p>
                       <p style={{ fontSize:32, fontWeight:700, color:"#EF4444", margin:0 }}>{anomalies.total}</p>
@@ -193,7 +193,7 @@ export default function Advanced() {
                 <p style={{ fontSize:13, fontWeight:600, color:"#374151", marginBottom:12 }}>
                   Adjust inputs — see how <strong style={{ color:"#6B5FED" }}>{wiTarget}</strong> changes:
                 </p>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:16 }}>
+                <div className="rg-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginBottom:16 }}>
                   {numCols.filter(c => c !== wiTarget).slice(0,6).map(col => {
                     const idx  = activeData.columns.indexOf(col);
                     const vals = activeData.data.map(r => r[idx]).filter(v => v !== null && !isNaN(v));
@@ -228,7 +228,7 @@ export default function Advanced() {
           {wiResult && (
             <div style={{ background:"white", border:"1px solid #E5E7EB", borderRadius:10, padding:20 }}>
               <h3 style={{ fontSize:14, fontWeight:700, marginBottom:16 }}>What-If Result for <span style={{ color:"#6B5FED" }}>{wiTarget}</span></h3>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
+              <div className="rg-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:14 }}>
                 <div style={{ background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:10, padding:16, textAlign:"center" }}>
                   <p style={{ fontSize:12, color:"#7C3AED", margin:"0 0 6px" }}>Predicted Value</p>
                   <p style={{ fontSize:28, fontWeight:700, color:"#6B5FED", margin:0 }}>{wiResult.predicted}</p>

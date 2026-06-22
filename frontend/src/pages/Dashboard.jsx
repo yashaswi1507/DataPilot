@@ -220,7 +220,7 @@ export default function Dashboard() {
 
       {/* Upload / Success bar */}
       {!raw && multiNames.length === 0 && !excelSession ? (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
+        <div className="rg-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
           {/* File upload */}
           <div {...getRootProps()} className={`dropzone${isDragActive?" active":""}`} style={{ marginBottom:0 }}>
             <input {...getInputProps()} />
@@ -398,7 +398,7 @@ export default function Dashboard() {
               <p style={{ fontSize:13, fontWeight:600, color:"#374151", marginBottom:12 }}>
                 Join two sheets on a matching column (e.g. join "Sales" to "Customers" on "CustomerID"):
               </p>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+              <div className="rg-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
                 <div>
                   <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>Left Sheet</label>
                   <select value={joinLeft} onChange={e => { setJoinLeft(e.target.value); setJoinLeftOn(""); }} style={{ width:"100%" }}>
@@ -416,7 +416,7 @@ export default function Dashboard() {
               </div>
 
               {joinLeft && joinRight && (
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:16 }}>
+                <div className="rg-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:16 }}>
                   <div>
                     <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>Join column ({joinLeft})</label>
                     <select value={joinLeftOn} onChange={e => setJoinLeftOn(e.target.value)} style={{ width:"100%" }}>
@@ -522,12 +522,12 @@ export default function Dashboard() {
           )}
 
           {/* Overview + Recommendations */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 360px", gap:20, marginBottom:20 }}>
+          <div className="rg-sidebar" style={{ display:"grid", gridTemplateColumns:"1fr 360px", gap:20, marginBottom:20 }}>
 
             {/* Overview */}
             <div style={S.card}>
               <h2 className="card-title">Dataset Overview</h2>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:16 }}>
+              <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:16 }}>
                 {[
                   { label:"Total Rows",    value:raw.shape[0].toLocaleString() },
                   { label:"Total Columns", value:raw.shape[1] },
@@ -540,7 +540,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:16 }}>
+              <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:16 }}>
                 <div className="stat-item"><label>Numeric Columns</label><div className="value">{numCols}</div></div>
                 <div className="stat-item"><label>Categorical Columns</label><div className="value">{catCols}</div></div>
                 <div className="stat-item"><label>Date Columns</label><div className="value">{dateCols}</div></div>
@@ -629,7 +629,7 @@ export default function Dashboard() {
             <div style={S.card}>
               <h2 className="card-title">Auto Cleaning Results</h2>
               <div className="alert alert-green"><CheckCircle size={14} /> Auto cleaning applied successfully!</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr auto 1fr", gap:24, alignItems:"start", marginBottom:16 }}>
+              <div className="rg-compare" style={{ display:"grid", gridTemplateColumns:"1fr auto 1fr", gap:24, alignItems:"start", marginBottom:16 }}>
                 <div>
                   <p style={{ fontSize:13, fontWeight:700, color:"#EF4444", marginBottom:10 }}>Before Cleaning</p>
                   {[
@@ -690,7 +690,7 @@ export default function Dashboard() {
           <div style={{ marginBottom:20 }}>
             <h2 style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>What would you like to do next?</h2>
             <p style={{ fontSize:13, color:"#9CA3AF", marginBottom:16 }}>Choose an action to start analyzing your data.</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:14 }}>
+            <div className="rg-5col" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:14 }}>
               {[
                 { icon:BarChart2,     title:"Analyze Data",    desc:"Run EDA, view insights, charts and data quality report.", btn:"Start Analysis",    color:"#2563EB", to:"/insights" },
                 { icon:Brain,         title:"Train ML Model",  desc:"Train and compare machine learning models.",              btn:"Train Model",       color:"#16A34A", to:"/ml/testing" },

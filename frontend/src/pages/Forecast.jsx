@@ -82,7 +82,7 @@ export default function Forecast() {
       </div>
 
       {result && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 280px", gap:20 }}>
+        <div className="rg-fallback" style={{ display:"grid", gridTemplateColumns:"1fr 280px", gap:20 }}>
 
           {/* Chart */}
           <div className="card">

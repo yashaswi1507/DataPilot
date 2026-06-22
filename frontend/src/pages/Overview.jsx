@@ -51,7 +51,7 @@ export default function Overview() {
     <div className="page">
 
       {/* Stats row */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:14, marginBottom:20 }}>
+      <div className="rg-6col" style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:14, marginBottom:20 }}>
         {[
           { label:"Total Rows",    value:raw.shape[0].toLocaleString() },
           { label:"Total Columns", value:raw.shape[1] },
@@ -95,7 +95,7 @@ export default function Overview() {
 
       {/* Data Preview */}
       <div style={{ background:"white", border:"1px solid #E5E7EB", borderRadius:10, padding:20 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+        <div className="rg-controls" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14, flexWrap:"wrap", gap:10 }}>
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={() => { setTab("clean"); setPage(1); }} className="btn btn-sm" style={{ background: tab==="clean"?"#6B5FED":"white", color: tab==="clean"?"white":"#374151", border:"1px solid #E5E7EB" }}>
               Cleaned Data
@@ -104,7 +104,7 @@ export default function Overview() {
               Raw Data
             </button>}
           </div>
-          <div style={{ display:"flex", gap:8 }}>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
             <div style={{ position:"relative" }}>
               <Search size={13} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", color:"#9CA3AF" }} />
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search..." style={{ paddingLeft:28, paddingRight:12, width:180, fontSize:13, padding:"7px 12px 7px 28px", border:"1px solid #E5E7EB", borderRadius:8, outline:"none" }} />

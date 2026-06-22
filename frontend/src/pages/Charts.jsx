@@ -328,7 +328,7 @@ export default function Charts() {
       )}
 
       {/* Chart type selector */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:20 }}>
+      <div className="rg-6col" style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, marginBottom:20 }}>
         {CHART_TYPES.map(ct => (
           <button key={ct.id} onClick={() => setChartType(ct.id)}
             style={{ padding:"12px 8px", border:`1px solid ${chartType===ct.id?"#6B5FED":"#E5E7EB"}`, borderRadius:10, background: chartType===ct.id?"#EEF0FF":"white", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}>
@@ -340,7 +340,7 @@ export default function Charts() {
 
       {/* Controls */}
       <div style={{ background:"white", border:"1px solid #E5E7EB", borderRadius:10, padding:"16px 20px", marginBottom:20 }}>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:14 }}>
+        <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:14 }}>
           <div>
             <label style={{ fontSize:12, color:"#6B7280", display:"block", marginBottom:4 }}>
               {chartType==="scatter" ? "X Column" : "Column"}

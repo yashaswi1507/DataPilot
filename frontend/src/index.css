@@ -112,20 +112,39 @@ body.dark-mode .btn-secondary { background: #1A1825 !important; color: var(--tex
     z-index: 150;
   }
   .page { padding: 14px; }
-  .stat-grid, [style*="grid-template-columns:repeat(4"],
-  [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
-  [style*="grid-template-columns:repeat(5"],
-  [style*="grid-template-columns: repeat(5"] { grid-template-columns: 1fr 1fr !important; }
-  [style*="grid-template-columns:1fr 360px"],
-  [style*="grid-template-columns: 1fr 360px"],
-  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Responsive grid utility classes — added to specific layout divs
+     across pages so tablet/mobile breakpoints are explicit and robust,
+     instead of relying on fragile inline-style attribute-selectors. */
+  .rg-2col   { grid-template-columns: 1fr !important; }
+  .rg-3col   { grid-template-columns: 1fr 1fr !important; }
+  .rg-4col   { grid-template-columns: repeat(2, 1fr) !important; }
+  .rg-5col   { grid-template-columns: repeat(2, 1fr) !important; }
+  .rg-6col   { grid-template-columns: repeat(3, 1fr) !important; }
+  .rg-fallback { grid-template-columns: 1fr !important; }
+  .rg-sidebar{ grid-template-columns: 1fr !important; }
+  .rg-compare{ grid-template-columns: 1fr !important; }
+  .rg-compare > svg, .rg-compare > .compare-arrow { display: none; }
+  .rg-controls { flex-direction: column; align-items: stretch !important; }
+  .rg-controls > div { justify-content: flex-start; }
+
   .data-table { font-size: 12px; }
   .card { padding: 14px !important; }
+
+  /* Larger touch targets on mobile/tablet — default button padding is
+     sized for mouse pointers, which makes things hard to tap precisely. */
+  .btn, .btn-sm { padding: 10px 16px; min-height: 38px; }
+  input, select, textarea { min-height: 38px; font-size: 14px !important; }
+
+  /* Login/Signup split-screen — hide the dark branding panel entirely
+     on small screens so the form gets full width instead of being
+     squeezed into a sliver next to a fixed 45% panel. */
+  .auth-brand-panel { display: none !important; }
+  .auth-form-panel { padding: 24px !important; }
 }
 
 @media (max-width: 600px) {
-  [style*="grid-template-columns:repeat(2"],
-  [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
+  .rg-3col, .rg-4col, .rg-5col, .rg-6col { grid-template-columns: 1fr !important; }
   .topbar-right > div:nth-child(1),
   .topbar-right > button:nth-child(2) { display: none; }
 }

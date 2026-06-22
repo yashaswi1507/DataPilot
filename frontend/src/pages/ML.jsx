@@ -122,7 +122,7 @@ export default function MLPage() {
       {result && (
         <>
           {/* Model Comparison + Best Model + Feature Importance */}
-          <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr 1.2fr", gap:20, marginBottom:20 }}>
+          <div className="rg-fallback" style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr 1.2fr", gap:20, marginBottom:20 }}>
 
             {/* Model Comparison Table */}
             <div className="card">
@@ -218,7 +218,7 @@ export default function MLPage() {
           {showDetails && (
             <div className="card" style={{ marginBottom:20 }}>
               <h2 className="card-title">Model Details</h2>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:16, marginBottom:16 }}>
+              <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:16, marginBottom:16 }}>
                 <div>
                   <p style={{ fontSize:12, color:"#6B7280", marginBottom:4 }}>Training samples</p>
                   <p style={{ fontSize:16, fontWeight:700 }}>{result.n_train?.toLocaleString()}</p>
@@ -268,7 +268,7 @@ export default function MLPage() {
           )}
 
           {/* Prediction Preview + Actions */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:20, marginBottom:20 }}>
+          <div className="rg-fallback" style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:20, marginBottom:20 }}>
             <div className="card">
               <h2 className="card-title">Prediction Preview</h2>
               {previewRows.length > 0 ? (
@@ -318,7 +318,7 @@ export default function MLPage() {
           {showAll && (
             <div className="card">
               <h2 className="card-title">Predict on New Data</h2>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:14 }}>
+              <div className="rg-4col" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:14 }}>
                 {(result.feature_names||[]).slice(0,8).map(feat => (
                   <div key={feat}>
                     <label style={{ fontSize:11, color:"#6B7280", display:"block", marginBottom:4 }}>{feat}</label>
