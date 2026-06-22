@@ -265,24 +265,88 @@ def train_prediction_model(df, target):
     # Feature importance
     feature_importance = _get_feature_importance(best["model"], feature_names)
 
-    # Model comparison table
-    model_comparison = [
-        {
-            "Model":           r["name"],
-            "CV Score (mean)": round(r["cv_mean"], 4),
-            "CV Std":          round(r["cv_std"], 4),
-        }
-        for r in results
-    ]
+    # ── Real test-set sample predictions (for the Prediction Preview
+    # table on the frontend) — actual vs predicted from the held-out
+    # test split, not simulated. Capped at 10 rows for display.
+    sample_predictions = []
+    y_test_arr = y_test.values if hasattr(y_test, "values") else np.asarray(y_test)
+    for i in range(min(10, len(y_test_arr))):
+        actual_val = float(y_test_arr[i])
+        pred_val   = float(y_pred[i])
+        diff       = abs(pred_val - actual_val)
+        pct_err    = (diff / abs(actual_val) * 100) if actual_val != 0 else None
+        sample_predictions.append({
+            "actual":    round(actual_val, 2),
+            "predicted": round(pred_val, 2),
+            "diff":      round(diff, 2),
+            "pct_error": round(pct_err, 2) if pct_err is not None else None,
+        })
+
+    # ── Per-model metrics for the comparison table ────────────
+    # Fit + evaluate every candidate on the same test set so RMSE/MAE/
+    # Accuracy shown per row are real numbers, not placeholders.
+    import time as _time
+    model_comparison = []
+    for r in results:
+        try:
+            t0 = _time.time()
+            r["model"].fit(X_train, y_train)
+            train_time = round(_time.time() - t0, 3)
+            preds = r["model"].predict(X_test)
+
+            row = {
+                "Model":           r["name"],
+                "CV Score (mean)": round(r["cv_mean"], 4),
+                "CV Std":          round(r["cv_std"], 4),
+                "Training Time":   train_time,
+            }
+            if task_type == "regression":
+                row["RMSE"] = round(float(np.sqrt(mean_squared_error(y_test, preds))), 4)
+                row["MAE"]  = round(float(mean_absolute_error(y_test, preds)), 4)
+            else:
+                preds_cls = np.round(preds).astype(int)
+                row["Accuracy"] = round(float(accuracy_score(y_test, preds_cls)), 4)
+            model_comparison.append(row)
+        except Exception:
+            model_comparison.append({
+                "Model": r["name"], "CV Score (mean)": round(r["cv_mean"], 4),
+                "CV Std": round(r["cv_std"], 4), "Training Time": None,
+            })
+
+    # ── Why was this model picked? Plain-language explanation ──
+    second_best_gap = None
+    if len(results) > 1:
+        second_best_gap = round(best["cv_mean"] - results[1]["cv_mean"], 4)
+
+    score_word = "R² score" if task_type == "regression" else "accuracy"
+    reasons = []
+    reasons.append(
+        f"{best['name']} had the highest cross-validated {score_word} "
+        f"({best['cv_mean']:.3f}) across {cv_folds} folds — meaning it consistently "
+        f"performed best on data it hadn't seen during training, not just a lucky split."
+    )
+    if second_best_gap is not None:
+        if second_best_gap > 0.05:
+            reasons.append(f"It beat the next-best model ({results[1]['name']}) by a clear margin of {second_best_gap:.3f}.")
+        else:
+            reasons.append(f"It was close to {results[1]['name']} (gap of only {second_best_gap:.3f}), but still came out ahead.")
+    if best["cv_std"] < 0.05:
+        reasons.append("Its performance was also very stable across folds (low variance), so this result is reliable.")
+    elif best["cv_std"] > 0.15:
+        reasons.append("Note: performance varied somewhat across folds, so treat this score as a reasonable estimate rather than exact.")
+
+    why_best_model = " ".join(reasons)
 
     return {
         "error":              None,
         "task_type":          task_type,
         "best_model_name":    best["name"],
+        "why_best_model":     why_best_model,
         "model":              best["model"],
         "metrics":            metrics,
         "feature_importance": feature_importance,
         "model_comparison":   model_comparison,
+        "sample_predictions": sample_predictions,
         "feature_names":      feature_names,
         "label_encoders":     label_encoders,
         "target_encoder":     target_encoder,

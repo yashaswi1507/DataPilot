@@ -1,4 +1,4 @@
-import sys, io
+import sys, io, math
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response
@@ -10,6 +10,25 @@ from engines.preprocessing import DataPreprocessor
 from engines.dataset_profiler import DatasetProfiler
 
 router = APIRouter()
+
+
+def _sanitize_value(v):
+    """Convert any non-JSON-compliant float (NaN, inf, -inf) to None."""
+    if v is None:
+        return None
+    if isinstance(v, float):
+        if math.isnan(v) or math.isinf(v):
+            return None
+        return v
+    try:
+        fv = float(v)
+        if isinstance(v, (int, str, bool)):
+            return v
+        if math.isnan(fv) or math.isinf(fv):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return v
 
 
 class DataPayload(BaseModel):
@@ -29,11 +48,12 @@ def process(payload: DataPayload):
         proc            = DataPreprocessor(df, payload.outlier_option, payload.missing_option,
                                            dataset_type, column_profiles)
         clean_df, report = proc.process()
+        safe_rows = [[_sanitize_value(v) for v in row] for row in clean_df.values.tolist()]
         return JSONResponse({
             "success":       True,
             "clean": {
                 "columns": clean_df.columns.tolist(),
-                "data":    clean_df.where(pd.notnull(clean_df), None).values.tolist(),
+                "data":    safe_rows,
                 "shape":   list(clean_df.shape),
             },
             "report":        report,

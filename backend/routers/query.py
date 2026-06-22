@@ -17,11 +17,26 @@ class QueryPayload(BaseModel):
     query:   str
 
 
+def _translate_to_english(text: str) -> str:
+    """Detect language and translate to English if needed. Falls back to original text on any failure."""
+    try:
+        from deep_translator import GoogleTranslator
+        # Quick heuristic: if text is mostly ASCII letters, skip translation call (faster, avoids rate limits)
+        non_ascii_ratio = sum(1 for c in text if ord(c) > 127) / max(len(text), 1)
+        if non_ascii_ratio < 0.1:
+            return text
+        translated = GoogleTranslator(source="auto", target="en").translate(text)
+        return translated or text
+    except Exception:
+        return text
+
+
 @router.post("/run")
 def run_query(payload: QueryPayload):
     try:
         df = pd.DataFrame(payload.data, columns=payload.columns)
-        op, target, group = parse_query(payload.query, df)
+        query_en   = _translate_to_english(payload.query)
+        op, target, group = parse_query(query_en, df)
         result_dict = execute_query(df, op, target, group)
         insights    = generate_query_insight(result_dict, target, group)
 

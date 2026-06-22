@@ -45,6 +45,103 @@ class DatasetProfiler:
         return "mixed"
 
     # =====================================================
+    # RECOMMENDATIONS — target column, task type, model,
+    # forecasting column. All derived from actual profiled
+    # data, never hardcoded.
+    # =====================================================
+
+    def get_recommendations(self):
+        if not self.profile_report:
+            self.profile_dataset()
+
+        numeric_cols  = [c for c,p in self.profile_report.items() if p["detected_type"] == "numeric"]
+        category_cols = [c for c,p in self.profile_report.items() if p["detected_type"] == "category"]
+        date_cols     = [c for c,p in self.profile_report.items() if p["detected_type"] == "date"]
+
+        # ── Recommended target: numeric column with highest variance
+        # relative to its mean (signals a meaningful outcome metric,
+        # not an ID-like column), excluding near-constant columns.
+        target_col  = None
+        task_type   = None
+        best_model  = None
+
+        if numeric_cols:
+            variances = {}
+            for c in numeric_cols:
+                series = self.df[c].dropna()
+                if len(series) < 2:
+                    continue
+                mean = series.mean()
+                std  = series.std()
+                if mean == 0 or pd.isna(std):
+                    continue
+                cv = std / abs(mean)  # coefficient of variation
+                uniq_ratio = series.nunique() / max(len(series), 1)
+                # Penalize columns that look like IDs (near-100% unique, large integers)
+                if uniq_ratio > 0.95 and series.nunique() > 20:
+                    continue
+                variances[c] = cv
+            if variances:
+                target_col = max(variances, key=variances.get)
+
+        if not target_col and numeric_cols:
+            target_col = numeric_cols[0]
+
+        # ── Task type: regression if target is continuous numeric,
+        # classification if target is categorical with few classes.
+        if target_col:
+            uniq = self.df[target_col].nunique()
+            if uniq <= 10 and target_col in category_cols:
+                task_type  = "Classification"
+                best_model = "Random Forest Classifier"
+            else:
+                task_type  = "Regression"
+                best_model = "Random Forest"
+        elif category_cols:
+            target_col = category_cols[0]
+            task_type  = "Classification"
+            best_model = "Random Forest Classifier"
+
+        # ── Forecasting column: a date column if one exists
+        forecast_col = date_cols[0] if date_cols else None
+
+        # ── Data quality score: based on missing values + duplicates ratio
+        # Previous formula used 0.6/0.4 multipliers which made the score
+        # barely move even with real issues (e.g. 1.9% missing + 0.1% dupes
+        # only dropped the score by ~1 point, landing at 99/100 — misleading).
+        # New formula scales missing/duplicate ratios up before subtracting,
+        # plus checks per-column missing rates so one badly-missing column
+        # doesn't get diluted away by many clean columns.
+        total_cells   = self.df.shape[0] * max(self.df.shape[1], 1)
+        missing_cells = sum(p["missing_count"] for p in self.profile_report.values())
+        missing_ratio = missing_cells / total_cells if total_cells else 0
+        dup_ratio     = self.df.duplicated().sum() / max(len(self.df), 1)
+
+        # Worst single-column missing rate also factors in — a dataset where
+        # one important column is 40% empty shouldn't score "Excellent" just
+        # because the other 17 columns are complete.
+        col_missing_rates = [p["missing_percent"] / 100 for p in self.profile_report.values()]
+        worst_col_missing = max(col_missing_rates) if col_missing_rates else 0
+
+        penalty = (missing_ratio * 100 * 2.5) + (dup_ratio * 100 * 2.0) + (worst_col_missing * 100 * 0.5)
+        quality_score = round(max(0, min(100, 100 - penalty)))
+
+        quality_label = "Excellent" if quality_score >= 90 else "Good" if quality_score >= 75 else "Fair" if quality_score >= 50 else "Poor"
+
+        return {
+            "recommended_target":   target_col,
+            "recommended_task":     task_type or "Regression",
+            "recommended_model":    best_model or "Random Forest",
+            "forecasting_column":   forecast_col,
+            "dataset_type":         self.detect_dataset_type(),
+            "data_quality_score":   quality_score,
+            "data_quality_label":   quality_label,
+            "numeric_columns":      numeric_cols,
+            "categorical_columns":  category_cols,
+            "date_columns":         date_cols,
+        }
+
+    # =====================================================
     # PROFILE ONE COLUMN
     # =====================================================
 

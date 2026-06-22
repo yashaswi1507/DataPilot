@@ -5,6 +5,16 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Load variables from a .env file in the backend/ directory into the
+# process environment. Without this, os.environ.get() below only ever
+# sees real system environment variables — it silently ignores .env
+# entirely, which is why editing .env had no effect until now.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed — falls back to system env vars / defaults
+
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST",     "localhost"),
     "port":     int(os.environ.get("DB_PORT", "5432")),

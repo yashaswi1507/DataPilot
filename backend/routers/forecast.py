@@ -25,8 +25,14 @@ def run_forecast(payload: ForecastPayload):
         date_col, _ = detect_timeseries_cols(df)
         if payload.date_col:
             date_col = payload.date_col
+
+        # If no date column detected/provided, create a synthetic integer index
+        # so any numeric series (e.g. health metrics, sales without dates) can
+        # still be forecasted. The x-axis will show "Period 1, 2, 3..." instead
+        # of real dates, but the trend/forecast math is identical.
         if not date_col:
-            return JSONResponse({"success": False, "error": "No date column detected."})
+            df["__period__"] = range(1, len(df) + 1)
+            date_col = "__period__"
         ts, freq      = prepare_series(df, date_col, payload.value_col)
         result, error = forecast(ts, periods=payload.periods, freq=freq)
         if error:

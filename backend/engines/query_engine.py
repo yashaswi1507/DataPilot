@@ -52,7 +52,44 @@ OP_ALIASES = {
     "unique": "unique", "distinct": "unique", "different": "unique",
     "how many types": "unique", "categories": "unique",
     "variety": "unique",
+
+    # ── Hindi / Hinglish aliases (romanized) ──────────────────
+    "औसत": "mean", "ausat": "mean",
+    "kul": "sum", "कुल": "sum", "jod": "sum",
+    "kitne": "count", "कितने": "count", "ginti": "count", "sankhya": "count",
+    "sabse zyada": "max", "सबसे ज्यादा": "max", "sabse jyada": "max", "adhiktam": "max",
+    "sabse kam": "min", "सबसे कम": "min", "nyuntam": "min",
+    "alag alag": "unique", "अलग अलग": "unique",
 }
+
+# Hindi/Hinglish → English keyword translation map.
+# Lets users type queries in Hindi (Devanagari) or Hinglish (romanized) and
+# still get matched against the English column/operation vocabulary above.
+HI_EN_WORD_MAP = {
+    "औसत": "average", "ausat": "average",
+    "कुल": "total", "kul": "total", "jod": "total",
+    "कितने": "how many", "kitne": "how many", "ginti": "count",
+    "सबसे": "most", "sabse": "most",
+    "ज्यादा": "highest", "zyada": "highest", "jyada": "highest",
+    "कम": "lowest", "kam": "lowest",
+    "द्वारा": "by", "dwara": "by",
+    "में": "in", "mein": "in",
+    "क्या": "what", "kya": "what",
+    "है": "is", "hai": "is",
+    "दिखाओ": "show", "dikhao": "show",
+    "बताओ": "tell", "batao": "tell",
+    "और": "and", "aur": "and",
+}
+
+
+def _translate_hinglish(query: str) -> str:
+    """Replace known Hindi/Hinglish words with their English equivalents
+    so the rest of the NLP pipeline (built for English) can match them.
+    Column names are left untouched since they're matched separately."""
+    translated = query
+    for hi, en in sorted(HI_EN_WORD_MAP.items(), key=lambda x: -len(x[0])):
+        translated = re.sub(re.escape(hi), en, translated, flags=re.IGNORECASE)
+    return translated
 
 STOP_WORDS = {
     "what", "is", "the", "of", "in", "for", "by", "and", "or",
@@ -245,8 +282,10 @@ BY_PATTERNS = [
 def parse_query(query, df):
     """
     Returns (op, target_col, group_col).
-    Improved NLP — handles complex queries, typos, synonyms.
+    Improved NLP — handles complex queries, typos, synonyms,
+    and Hindi/Hinglish phrasing (translated to English first).
     """
+    query = _translate_hinglish(query)
     q    = _preprocess_query(query)
     cols = df.columns.tolist()
 

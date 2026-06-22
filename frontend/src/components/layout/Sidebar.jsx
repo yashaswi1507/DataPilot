@@ -1,172 +1,189 @@
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import useStore from "../../store/useStore";
 import {
-  LayoutDashboard, Database, BarChart2, Brain, TrendingUp,
-  FileText, Settings, HelpCircle, ChevronDown, Zap, Upload
+  LayoutDashboard, Database, Lightbulb, BarChart2, MessageSquare,
+  Wand2, AlertCircle, Copy, ScanLine, FileType2,
+  FlaskConical, GitCompare, Crosshair, Star,
+  TrendingUp, CalendarRange, FileText, Settings,
+  HelpCircle, Plus, Zap, ChevronDown, ChevronUp
 } from "lucide-react";
-import clsx from "clsx";
 
-const NAV = [
-  { label: "Dashboard",       icon: LayoutDashboard, to: "/" },
-  { label: "Data Overview",   icon: Database,        to: "/overview" },
-  { label: "Insights",        icon: Zap,             to: "/insights" },
-  { label: "Charts",          icon: BarChart2,       to: "/charts" },
-  { label: "Ask Your Data",   icon: Brain,           to: "/query" },
+const MAIN_NAV = [
+  { label: "Dashboard",    icon: LayoutDashboard, to: "/" },
+  { label: "Data Overview",icon: Database,        to: "/overview" },
+  { label: "Insights",     icon: Lightbulb,       to: "/insights" },
+  { label: "Charts",       icon: BarChart2,       to: "/charts" },
+  { label: "Ask Your Data",icon: MessageSquare,   to: "/query" },
 ];
 
 const DATA_PREP = [
-  { label: "Data Cleaning",          icon: Database,    to: "/prep/clean" },
-  { label: "Missing Value Handling", icon: Database,    to: "/prep/missing" },
-  { label: "Duplicate Removal",      icon: Database,    to: "/prep/duplicates" },
-  { label: "Outlier Detection",      icon: Database,    to: "/prep/outliers" },
-  { label: "Data Type Fixes",        icon: Database,    to: "/prep/types" },
+  { label: "Data Cleaning",          icon: Wand2,      to: "/prep/clean" },
+  { label: "Missing Value Handling", icon: AlertCircle, to: "/prep/missing" },
+  { label: "Duplicate Removal",      icon: Copy,       to: "/prep/duplicates" },
+  { label: "Outlier Detection",      icon: ScanLine,   to: "/prep/outliers" },
+  { label: "Data Type Fixes",        icon: FileType2,  to: "/prep/types" },
 ];
 
 const ML_NAV = [
-  { label: "Model Testing",     icon: Brain,      to: "/ml/testing" },
-  { label: "Model Comparison",  icon: BarChart2,  to: "/ml/comparison" },
-  { label: "Predictions",       icon: Brain,      to: "/ml/predict" },
-  { label: "Feature Importance",icon: BarChart2,  to: "/ml/features" },
+  { label: "Model Testing",     icon: FlaskConical, to: "/ml/testing" },
+  { label: "Model Comparison",  icon: GitCompare,   to: "/ml/comparison" },
+  { label: "Predictions",       icon: Crosshair,    to: "/ml/predictions" },
+  { label: "Feature Importance",icon: Star,         to: "/ml/features" },
 ];
 
 const FORECAST_NAV = [
-  { label: "Future Predictions", icon: TrendingUp, to: "/forecast/predict" },
-  { label: "Scenario Analysis",  icon: TrendingUp, to: "/forecast/scenarios" },
+  { label: "Future Predictions", icon: TrendingUp,    to: "/forecast/predict" },
+  { label: "Scenario Analysis",  icon: CalendarRange, to: "/forecast/scenarios" },
 ];
 
-const SidebarSection = ({ title, items, collapsed }) => (
-  <div className="mb-2">
-    <p className="px-3 py-1 text-xs font-semibold text-purple-300 uppercase tracking-wider">
-      {title}
-    </p>
-    {items.map((item) => (
-      <NavLink
-        key={item.to}
-        to={item.to}
-        className={({ isActive }) =>
-          clsx(
-            "flex items-center gap-3 px-3 py-2 rounded-lg mx-2 text-sm transition-all",
-            isActive
-              ? "bg-purple-600 text-white font-medium"
-              : "text-purple-200 hover:bg-purple-800/50 hover:text-white"
-          )
-        }
-      >
-        <item.icon size={15} />
-        <span>{item.label}</span>
-      </NavLink>
-    ))}
-  </div>
-);
+const REPORTS_NAV = [
+  { label: "Reports", icon: FileText, to: "/reports" },
+];
 
-export default function Sidebar() {
+const SECTIONS = [
+  { key: "DATA PREPARATION", items: DATA_PREP },
+  { key: "MACHINE LEARNING", items: ML_NAV },
+  { key: "FORECASTING",      items: FORECAST_NAV },
+  { key: "REPORTS",          items: REPORTS_NAV },
+];
+
+function NavItem({ label, icon: Icon, to, onNavigate }) {
   return (
-    <aside className="w-52 min-h-screen bg-[#1E1B4B] flex flex-col fixed left-0 top-0 bottom-0 z-40">
+    <NavLink
+      to={to}
+      end={to === "/"}
+      onClick={() => onNavigate && onNavigate()}
+      style={({ isActive }) => ({
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "7px 16px",
+        fontSize: 13,
+        color: isActive ? "white" : "rgba(255,255,255,0.5)",
+        background: isActive ? "#6B5FED" : "transparent",
+        textDecoration: "none",
+        fontWeight: isActive ? 600 : 400,
+        transition: "all 0.15s",
+        borderRadius: 0,
+      })}
+      onMouseEnter={e => {
+        if (e.currentTarget.style.background !== "rgb(107, 95, 237)") {
+          e.currentTarget.style.background = "#1E1B2E";
+          e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+        }
+      }}
+      onMouseLeave={e => {
+        if (e.currentTarget.style.background !== "rgb(107, 95, 237)") {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+        }
+      }}
+    >
+      <Icon size={14} style={{ flexShrink: 0 }} />
+      {label}
+    </NavLink>
+  );
+}
 
+export default function Sidebar({ mobileOpen, onClose }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState({
+    "DATA PREPARATION": true,
+    "MACHINE LEARNING": true,
+    "FORECASTING": true,
+    "REPORTS": true,
+  });
+
+  return (
+    <>
+    {mobileOpen && <div className="sidebar-overlay active" onClick={onClose} />}
+    <aside className={`sidebar${mobileOpen ? " mobile-open" : ""}`} style={{
+      width: 200,
+      minHeight: "100vh",
+      background: "#13111E",
+      display: "flex",
+      flexDirection: "column",
+      position: "fixed",
+      left: 0, top: 0, bottom: 0,
+      zIndex: 50,
+      overflowY: "auto",
+      scrollbarWidth: "none",
+    }}>
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-purple-800/50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-            <BarChart2 size={18} className="text-white" />
-          </div>
-          <span className="text-white font-bold text-lg">DataPilot</span>
+      <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 28, height: 28, background: "#6B5FED", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <BarChart2 size={15} color="white" />
         </div>
+        <span style={{ color: "white", fontWeight: 700, fontSize: 16 }}>DataPilot</span>
       </div>
 
       {/* Upload button */}
-      <div className="px-3 py-3">
-        <NavLink
-          to="/"
-          className="flex items-center justify-center gap-2 w-full py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-all"
+      <div style={{ padding: "10px 12px" }}>
+        <button
+          onClick={() => { navigate("/"); onClose && onClose(); }}
+          style={{ width: "100%", background: "#6B5FED", color: "white", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
-          <Upload size={15} />
-          Upload Dataset
-        </NavLink>
+          <Plus size={14} /> Upload Dataset
+        </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-2 scrollbar-hide">
+      {/* Main nav */}
+      <nav style={{ flex: 1 }}>
+        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, letterSpacing: "0.7px", padding: "8px 16px 4px" }}>MAIN</p>
+        {MAIN_NAV.map(item => <NavItem key={item.to} {...item} onNavigate={onClose} />)}
 
-        <div className="mb-2">
-          <p className="px-3 py-1 text-xs font-semibold text-purple-300 uppercase tracking-wider">
-            Main
-          </p>
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                clsx(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg mx-2 text-sm transition-all",
-                  isActive
-                    ? "bg-purple-600 text-white font-medium"
-                    : "text-purple-200 hover:bg-purple-800/50 hover:text-white"
-                )
-              }
+        {/* Collapsible sections */}
+        {SECTIONS.map(({ key, items }) => (
+          <div key={key}>
+            <div
+              onClick={() => setOpen(p => ({ ...p, [key]: !p[key] }))}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 4px", cursor: "pointer" }}
             >
-              <item.icon size={15} />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, letterSpacing: "0.7px", margin: 0 }}>{key}</p>
+              {open[key]
+                ? <ChevronUp size={12} color="rgba(255,255,255,0.3)" />
+                : <ChevronDown size={12} color="rgba(255,255,255,0.3)" />
+              }
+            </div>
+            {open[key] && items.map(item => <NavItem key={item.to + item.label} {...item} onNavigate={onClose} />)}
+          </div>
+        ))}
 
-        <SidebarSection title="Data Preparation" items={DATA_PREP} />
-        <SidebarSection title="Machine Learning" items={ML_NAV} />
-        <SidebarSection title="Forecasting" items={FORECAST_NAV} />
-
-        <div className="mb-2">
-          <p className="px-3 py-1 text-xs font-semibold text-purple-300 uppercase tracking-wider">
-            Reports
-          </p>
-          <NavLink
-            to="/reports"
-            className={({ isActive }) =>
-              clsx(
-                "flex items-center gap-3 px-3 py-2 rounded-lg mx-2 text-sm transition-all",
-                isActive
-                  ? "bg-purple-600 text-white font-medium"
-                  : "text-purple-200 hover:bg-purple-800/50 hover:text-white"
-              )
-            }
-          >
-            <FileText size={15} />
-            <span>Reports</span>
-          </NavLink>
-        </div>
-
-        <div className="border-t border-purple-800/50 pt-2">
-          <NavLink to="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg mx-2 text-sm text-purple-200 hover:bg-purple-800/50 hover:text-white transition-all">
-            <Settings size={15} />
-            <span>Settings</span>
-          </NavLink>
-          <NavLink to="/help" className="flex items-center gap-3 px-3 py-2 rounded-lg mx-2 text-sm text-purple-200 hover:bg-purple-800/50 hover:text-white transition-all">
-            <HelpCircle size={15} />
-            <span>Help & Support</span>
-          </NavLink>
+        {/* Bottom links */}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 8, paddingTop: 8 }}>
+          <NavItem label="Settings"     icon={Settings}    to="/settings" onNavigate={onClose} />
+          <NavItem label="Help & Support" icon={HelpCircle} to="/help" onNavigate={onClose} />
         </div>
       </nav>
 
-      {/* Bottom — plan info */}
-      <div className="border-t border-purple-800/50 p-3">
-        <div className="bg-purple-800/50 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 bg-blue-400 rounded flex items-center justify-center text-xs">🎓</div>
-            <span className="text-white text-xs font-semibold">Free Plan</span>
-          </div>
-          <div className="mb-2">
-            <div className="flex justify-between text-xs text-purple-300 mb-1">
-              <span>5 / 10 Datasets Used</span>
-            </div>
-            <div className="w-full bg-purple-900 rounded-full h-1.5">
-              <div className="bg-purple-400 h-1.5 rounded-full" style={{ width: "50%" }} />
-            </div>
-          </div>
-          <button className="w-full py-1.5 bg-purple-500 hover:bg-purple-400 text-white text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1">
-            <Zap size={12} />
-            Upgrade Plan
-          </button>
-        </div>
-      </div>
+      {/* Plan badge */}
+      <PlanBadge />
     </aside>
+    </>
+  );
+}
+
+function PlanBadge() {
+  const store = useStore();
+  const { plan, limit, used, pct } = store.getPlanInfo();
+  const planLabel = { free: "Free Plan", basic: "Basic Plan", pro: "Pro Plan" }[plan] || "Free Plan";
+  const limitLabel = limit >= 999999 ? "Unlimited" : `${used} / ${limit}`;
+
+  return (
+    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px" }}>
+      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: "0 0 2px" }}>🖥 {planLabel}</p>
+      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", margin: "0 0 6px" }}>{limitLabel} Datasets Used</p>
+      {limit < 999999 && (
+        <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 4, height: 4, marginBottom: 8 }}>
+          <div style={{ background: pct >= 90 ? "#EF4444" : "#6B5FED", height: 4, borderRadius: 4, width: `${pct}%` }} />
+        </div>
+      )}
+      {plan !== "pro" && (
+        <button style={{ width: "100%", background: "rgba(107,95,237,0.2)", border: "1px solid rgba(107,95,237,0.4)", color: "#A89FF5", borderRadius: 8, padding: "7px", fontSize: 12, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <Zap size={12} /> Upgrade Plan
+        </button>
+      )}
+    </div>
   );
 }
