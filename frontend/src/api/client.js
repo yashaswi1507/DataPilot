@@ -5,6 +5,14 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 120000, // 2 min for ML training
+  headers: {
+    // Required when the backend is tunneled through ngrok's free tier —
+    // without this, ngrok serves an HTML "are you a human" warning page
+    // instead of forwarding the request, which breaks CORS entirely
+    // (the warning page has no CORS headers, so the browser blocks it
+    // before our actual API ever sees the request).
+    "ngrok-skip-browser-warning": "true",
+  },
 });
 
 // Auto-attach JWT token to every request (needed for /api/schedule, /api/user, etc.)
