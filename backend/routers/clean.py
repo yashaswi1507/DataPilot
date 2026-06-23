@@ -1,4 +1,5 @@
 import sys, io, math
+import datetime as _datetime
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse, Response
@@ -13,9 +14,18 @@ router = APIRouter()
 
 
 def _sanitize_value(v):
-    """Convert any non-JSON-compliant float (NaN, inf, -inf) to None."""
+    """Convert any non-JSON-compliant value to something JSON can represent
+    (NaN/Inf -> None, datetime/Timestamp -> ISO string)."""
     if v is None:
         return None
+    if isinstance(v, (_datetime.datetime, _datetime.date, pd.Timestamp)):
+        if pd.isna(v):
+            return None
+        return v.isoformat()
+    if isinstance(v, _datetime.time):
+        return v.isoformat()
+    if isinstance(v, _datetime.timedelta):
+        return str(v)
     if isinstance(v, float):
         if math.isnan(v) or math.isinf(v):
             return None

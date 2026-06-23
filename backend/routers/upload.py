@@ -20,12 +20,28 @@ _workbook_cache: dict = {}
 
 
 import math
+import datetime as _datetime
 
 def _sanitize_value(v):
-    """Convert any non-JSON-compliant float (NaN, inf, -inf) to None.
-    Catches numpy floats too since they pass through Python's float() fine."""
+    """
+    Convert any non-JSON-compliant value to something JSON can represent:
+    - NaN, +Inf, -Inf -> None (plain JSON has no representation for these)
+    - datetime/date/Timestamp -> ISO 8601 string (Excel date columns load
+      as Python datetime/pandas Timestamp objects, which Python's json
+      module can't serialize on its own — this is what caused
+      "Object of type datetime is not JSON serializable" on Excel uploads
+      with date columns, e.g. order dates, signup dates, etc.)
+    """
     if v is None:
         return None
+    if isinstance(v, (_datetime.datetime, _datetime.date, pd.Timestamp)):
+        if pd.isna(v):
+            return None
+        return v.isoformat()
+    if isinstance(v, _datetime.time):
+        return v.isoformat()
+    if isinstance(v, _datetime.timedelta):
+        return str(v)
     if isinstance(v, float):
         if math.isnan(v) or math.isinf(v):
             return None
