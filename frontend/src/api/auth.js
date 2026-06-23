@@ -25,6 +25,11 @@ export const register = async (name, email, password, plan = "free", isStudentSe
   return data;
 };
 
+export const googleLogin = async (credential, plan = "free", isStudentSelfDeclared = false) => {
+  const { data } = await api.post("/api/auth/google", { credential, plan, is_student_selfdeclared: isStudentSelfDeclared });
+  return data;
+};
+
 export const acceptInvite = async (inviteToken, name, password) => {
   const { data } = await api.post("/api/organizations/accept-invite", { invite_token: inviteToken, name, password });
   return data;

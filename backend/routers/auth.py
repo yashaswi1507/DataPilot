@@ -1,6 +1,7 @@
 """
 JWT Authentication — DataPilot
-Register, Login, Token verify — no third party needed.
+Register, Login, Token verify, Google OAuth — no third party needed
+beyond Google's own token verification.
 """
 import os
 import re
@@ -13,6 +14,8 @@ from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 from database import get_db_conn
 
@@ -22,6 +25,15 @@ router = APIRouter()
 SECRET_KEY      = os.environ.get("JWT_SECRET", "datapilot-secret-change-in-production-2024")
 ALGORITHM       = "HS256"
 TOKEN_EXPIRE_DAYS = 7
+
+# Google OAuth Client ID — must match the one configured in the frontend
+# (the Google Identity Services script uses the same ID to issue tokens).
+# Set via env var in production; falls back to the dev value here only
+# so local testing doesn't break if it's not yet in .env.
+GOOGLE_CLIENT_ID = os.environ.get(
+    "GOOGLE_CLIENT_ID",
+    "544303241286-stc79gugvrb30kv9v8to3ga0rop6e6vl.apps.googleusercontent.com"
+)
 
 # ── Student plan config ──────────────────────────────────────
 # Verified-domain students get more daily "tokens" (analysis/ML/chat
@@ -362,5 +374,102 @@ def change_password(
     except Exception as e:
         conn.rollback()
         raise HTTPException(500, str(e))
+    finally:
+        conn.close()
+
+
+# ── Google OAuth login/signup ────────────────────────────────────
+class GoogleAuthPayload(BaseModel):
+    credential: str   # the ID token JWT issued by Google Identity Services
+    plan: str = "free"
+    is_student_selfdeclared: bool = False
+
+
+@router.post("/google")
+def google_login(payload: GoogleAuthPayload):
+    """
+    Verifies the Google ID token (sent by the frontend's Google Identity
+    Services button), then either logs in an existing user or creates a
+    new account — all in one request, matching how "Continue with Google"
+    behaves on most apps (no separate signup step needed).
+    """
+    try:
+        # Verify the token was actually issued by Google for OUR app
+        # (checking the audience matches our client ID is what prevents
+        # someone from forging a token for a different app and replaying
+        # it here).
+        idinfo = google_id_token.verify_oauth2_token(
+            payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+    except ValueError as e:
+        raise HTTPException(401, f"Invalid Google token: {e}")
+
+    google_user_id = idinfo["sub"]          # Google's stable unique ID for this user
+    email          = idinfo.get("email", "").lower()
+    name           = idinfo.get("name", email.split("@")[0] if email else "Google User")
+    email_verified = idinfo.get("email_verified", False)
+
+    if not email or not email_verified:
+        raise HTTPException(400, "Google account email is not verified.")
+
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+
+        # 1. Already signed up via Google before? Just log them in.
+        cur.execute("SELECT * FROM users WHERE google_id = %s", (google_user_id,))
+        user = cur.fetchone()
+
+        if not user:
+            # 2. Email exists but via password signup (not Google yet) —
+            #    link the Google ID to that existing account rather than
+            #    creating a duplicate, since it's clearly the same person.
+            cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cur.fetchone()
+
+            if user:
+                cur.execute("UPDATE users SET google_id = %s WHERE id = %s", (google_user_id, user["id"]))
+                conn.commit()
+            else:
+                # 3. Brand new user — create an account. No password is
+                #    set (NULL) since they'll always log in via Google.
+                verified_student = is_student_email(email)
+                is_student = verified_student or payload.is_student_selfdeclared
+                final_plan = "student" if is_student else payload.plan
+
+                cur.execute(
+                    """INSERT INTO users (email, name, password, plan, is_student, student_verified, google_id)
+                       VALUES (%s, %s, NULL, %s, %s, %s, %s) RETURNING *""",
+                    (email, name, final_plan, is_student, verified_student, google_user_id)
+                )
+                user = cur.fetchone()
+                conn.commit()
+
+                cur.execute("INSERT INTO activity (user_id, action) VALUES (%s, %s)", (user["id"], "Account created via Google"))
+                conn.commit()
+
+        # Log activity for returning users too
+        cur.execute("INSERT INTO activity (user_id, action) VALUES (%s, %s)", (user["id"], "Logged in via Google"))
+        conn.commit()
+
+        token = create_token(user["id"], user["email"])
+        return JSONResponse({
+            "success": True,
+            "token":   token,
+            "user": {
+                "id":    user["id"],
+                "email": user["email"],
+                "name":  user["name"],
+                "plan":  user["plan"],
+                "is_student": user["is_student"],
+                "student_verified": user["student_verified"],
+            }
+        })
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, f"Google login failed: {str(e)}")
     finally:
         conn.close()

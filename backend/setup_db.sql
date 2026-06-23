@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS organizations (
 );
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY, email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL, password VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL, password VARCHAR(255),
     plan VARCHAR(50) DEFAULT 'free', created_at TIMESTAMP DEFAULT NOW(),
     is_student BOOLEAN DEFAULT FALSE,
     student_verified BOOLEAN DEFAULT FALSE,   -- true if matched via .edu/.ac.in domain, false if self-declared
@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     datasets_uploaded_this_month INTEGER DEFAULT 0,   -- used for individual Free/Basic/Pro plan limits
     usage_reset_at TIMESTAMP DEFAULT NOW(),
     organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
-    org_role VARCHAR(20) DEFAULT NULL    -- 'admin' / 'member' — only meaningful when organization_id is set
+    org_role VARCHAR(20) DEFAULT NULL,    -- 'admin' / 'member' — only meaningful when organization_id is set
+    google_id VARCHAR(255) UNIQUE          -- set when the user signed up/logged in via Google OAuth; password is NULL for Google-only accounts
 );
 DO $$
 BEGIN
@@ -28,6 +29,21 @@ BEGIN
     ) THEN
         ALTER TABLE organizations ADD CONSTRAINT fk_org_owner FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE SET NULL;
     END IF;
+END $$;
+
+-- Safe migration for databases created before Google OAuth support was added.
+-- If the users table already existed without these, add them now; existing
+-- rows are unaffected since google_id defaults to NULL and password stays
+-- as-is (only newly nullable, not changed).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='users' AND column_name='google_id'
+    ) THEN
+        ALTER TABLE users ADD COLUMN google_id VARCHAR(255) UNIQUE;
+    END IF;
+    ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
 END $$;
 CREATE TABLE IF NOT EXISTS datasets (
     id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
