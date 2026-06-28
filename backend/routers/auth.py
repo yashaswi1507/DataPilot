@@ -94,6 +94,112 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     return payload
 
 
+# ── Plan limits ───────────────────────────────────────────────
+# These mirror frontend/src/store/useStore.js planLimits — kept here too
+# since the frontend value is just for display; enforcement must happen
+# server-side or it can be trivially bypassed via direct API calls.
+PLAN_DATASET_LIMITS = {
+    "free":    10,
+    "basic":   50,
+    "pro":     999999,
+    "student": 999999,   # students get unlimited datasets, but are
+                          # capped by daily token usage instead (see /tokens)
+    "team":       999999,
+    "business":   999999,
+    "enterprise": 999999,
+}
+
+
+def check_dataset_limit(current_user: dict = Depends(get_current_user)) -> dict:
+    """
+    Dependency for upload endpoints. Students are metered by daily token
+    usage instead of a monthly dataset count, so this branches:
+      - student plan -> consumes 1 daily token, blocks with 403 if none left
+      - everyone else -> blocks with 403 if monthly dataset limit reached,
+        otherwise increments their usage counter
+    Usage resets monthly on a rolling basis from usage_reset_at (not
+    calendar-month-based, to keep the reset logic simple).
+    """
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT plan, datasets_uploaded_this_month, usage_reset_at,
+                      is_student, student_verified, daily_tokens_used, daily_tokens_reset_at
+               FROM users WHERE id = %s""",
+            (current_user["user_id"],)
+        )
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(404, "User not found.")
+
+        if user["is_student"]:
+            limit = DAILY_TOKENS_VERIFIED_STUDENT if user["student_verified"] else DAILY_TOKENS_SELF_DECLARED
+            used  = user["daily_tokens_used"]
+            reset_at = user["daily_tokens_reset_at"]
+            now = datetime.utcnow()
+
+            if reset_at and (now - reset_at.replace(tzinfo=None)) >= timedelta(hours=24):
+                cur.execute(
+                    "UPDATE users SET daily_tokens_used = 0, daily_tokens_reset_at = NOW() WHERE id = %s",
+                    (current_user["user_id"],)
+                )
+                conn.commit()
+                used = 0
+
+            if used >= limit:
+                raise HTTPException(
+                    403,
+                    f"You've used all {limit} of your daily actions on the Student plan. "
+                    f"This resets 24 hours after your first action today."
+                )
+
+            cur.execute(
+                "UPDATE users SET daily_tokens_used = daily_tokens_used + 1 WHERE id = %s",
+                (current_user["user_id"],)
+            )
+            conn.commit()
+            return current_user
+
+        limit = PLAN_DATASET_LIMITS.get(user["plan"], 10)
+        used  = user["datasets_uploaded_this_month"]
+        reset_at = user["usage_reset_at"]
+        now = datetime.utcnow()
+
+        # Rolling 30-day reset
+        if reset_at and (now - reset_at.replace(tzinfo=None)) >= timedelta(days=30):
+            cur.execute(
+                "UPDATE users SET datasets_uploaded_this_month = 0, usage_reset_at = NOW() WHERE id = %s",
+                (current_user["user_id"],)
+            )
+            conn.commit()
+            used = 0
+
+        if used >= limit:
+            plan_label = user["plan"].capitalize()
+            raise HTTPException(
+                403,
+                f"You've reached your {plan_label} plan's limit of {limit} datasets this month. "
+                f"Upgrade your plan to upload more."
+            )
+
+        cur.execute(
+            "UPDATE users SET datasets_uploaded_this_month = datasets_uploaded_this_month + 1 WHERE id = %s",
+            (current_user["user_id"],)
+        )
+        conn.commit()
+        return current_user
+    except HTTPException:
+        raise
+    except Exception:
+        # Fail open — if usage tracking itself breaks (e.g. DB hiccup),
+        # don't block uploads entirely; just let the request through.
+        conn.rollback()
+        return current_user
+    finally:
+        conn.close()
+
+
 # ── Request models ────────────────────────────────────────────
 class RegisterPayload(BaseModel):
     name:     str
@@ -471,5 +577,121 @@ def google_login(payload: GoogleAuthPayload):
     except Exception as e:
         conn.rollback()
         raise HTTPException(500, f"Google login failed: {str(e)}")
+    finally:
+        conn.close()
+
+
+# ── Forgot Password / Reset Password ─────────────────────────────
+class ForgotPasswordPayload(BaseModel):
+    email: str
+    reset_url_base: str   # frontend URL to build the link with, e.g. "https://datapilot-ruddy.vercel.app/reset-password"
+
+
+class ResetPasswordPayload(BaseModel):
+    token: str
+    new_password: str
+
+
+RESET_TOKEN_EXPIRE_HOURS = 1
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordPayload):
+    """
+    Always returns success (even if the email doesn't exist) — this is
+    deliberate, to avoid leaking which emails are registered. If the
+    email IS registered, a reset link is emailed (or, if email isn't
+    configured on the server, the link is returned directly in the
+    response as a fallback so the feature still works during local
+    testing without Gmail SMTP set up).
+    """
+    from email_utils import send_password_reset_email, is_email_configured
+
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, google_id FROM users WHERE email = %s", (payload.email.lower(),))
+        user = cur.fetchone()
+
+        if not user:
+            # Don't reveal whether the email exists — same response either way.
+            return {"success": True, "message": "If that email is registered, a reset link has been sent."}
+
+        if user["google_id"] and True:
+            # They might have a password too (linked account) — only block
+            # if they have NO password set at all (Google-only account).
+            cur.execute("SELECT password FROM users WHERE id = %s", (user["id"],))
+            pw_row = cur.fetchone()
+            if not pw_row["password"]:
+                return {
+                    "success": True,
+                    "message": "This account uses Google sign-in and has no password to reset. Use 'Continue with Google' to log in instead.",
+                }
+
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=RESET_TOKEN_EXPIRE_HOURS)
+
+        cur.execute(
+            "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)",
+            (user["id"], token, expires_at)
+        )
+        conn.commit()
+
+        reset_link = f"{payload.reset_url_base.rstrip('/')}?token={token}"
+
+        if is_email_configured():
+            sent = send_password_reset_email(payload.email.lower(), reset_link, user["name"])
+            if sent:
+                return {"success": True, "message": "If that email is registered, a reset link has been sent."}
+            # Email configured but failed to send (e.g. network issue) —
+            # fall through to returning the link directly as a backup.
+
+        # Email not configured (local dev) or send failed — return the
+        # link directly so the feature is still testable/usable.
+        return {
+            "success": True,
+            "message": "Email sending isn't configured on this server, so here's your reset link directly:",
+            "reset_link": reset_link,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, str(e))
+    finally:
+        conn.close()
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordPayload):
+    """Completes a password reset using a token from forgot-password."""
+    if len(payload.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+
+    conn = get_db_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM password_reset_tokens WHERE token = %s AND used = FALSE",
+            (payload.token,)
+        )
+        reset_row = cur.fetchone()
+
+        if not reset_row:
+            raise HTTPException(400, "Invalid or already-used reset link.")
+        if reset_row["expires_at"].replace(tzinfo=None) < datetime.utcnow():
+            raise HTTPException(400, "This reset link has expired. Request a new one.")
+
+        new_hashed = hash_password(payload.new_password)
+        cur.execute("UPDATE users SET password = %s WHERE id = %s", (new_hashed, reset_row["user_id"]))
+        cur.execute("UPDATE password_reset_tokens SET used = TRUE WHERE id = %s", (reset_row["id"],))
+        conn.commit()
+
+        return {"success": True, "message": "Password reset successfully. You can now log in."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(500, str(e))
     finally:
         conn.close()

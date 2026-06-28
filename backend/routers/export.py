@@ -3,10 +3,10 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 
 sys.path.append("..")
-from engines.export_engine import export_html, export_pdf, export_ppt
+from engines.export_engine import export_html, export_pdf, export_ppt, export_excel
 
 router = APIRouter()
 
@@ -16,6 +16,7 @@ class ExportPayload(BaseModel):
     charts:      List[Dict]
     insights:    List[str]
     format:      str = "html"
+    raw_data:    Optional[Dict[str, Any]] = None   # { columns, data } — only used for Excel exports
 
 @router.post("/download")
 def download_report(payload: ExportPayload):
@@ -31,6 +32,10 @@ def download_report(payload: ExportPayload):
             data = export_ppt(payload.report_name, payload.kpis, payload.charts, payload.insights)
             mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
             filename = f"{payload.report_name}.pptx"
+        elif fmt in ("excel", "xlsx"):
+            data = export_excel(payload.report_name, payload.kpis, payload.charts, payload.insights, payload.raw_data)
+            mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            filename = f"{payload.report_name}.xlsx"
         else:
             raise HTTPException(400, f"Unknown format: {fmt}")
         return Response(content=data, media_type=mime,

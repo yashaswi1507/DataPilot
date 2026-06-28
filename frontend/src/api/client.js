@@ -150,18 +150,25 @@ export const getInsights = async (columns, rows) => {
 };
 
 // ── Export ────────────────────────────────────────────────────
-export const exportReport = async (reportName, kpis, charts, insights, format = "pdf") => {
+export const exportReport = async (reportName, kpis, charts, insights, format = "pdf", rawData = null) => {
   const response = await api.post("/api/export/download",
-    { report_name: reportName, kpis, charts, insights, format },
+    { report_name: reportName, kpis, charts, insights, format, raw_data: rawData },
     { responseType: "blob" }
   );
-  const ext  = format === "ppt" ? "pptx" : format;
+  const extMap = { ppt: "pptx", excel: "xlsx", xlsx: "xlsx" };
+  const ext  = extMap[format] || format;
   const url  = URL.createObjectURL(response.data);
   const link = document.createElement("a");
   link.href  = url;
   link.download = `${reportName}.${ext}`;
   link.click();
   URL.revokeObjectURL(url);
+};
+
+// ── Auth helpers ──────────────────────────────────────────────
+export const getTokenStatus = async () => {
+  const { data } = await api.get("/api/auth/tokens");
+  return data;
 };
 
 // ── Organizations / Company Plans ────────────────────────────
@@ -178,7 +185,8 @@ export const getMyOrganization = async () => {
   return data;
 };
 export const inviteMember = async (email) => {
-  const { data } = await api.post("/api/organizations/invite", { email });
+  const inviteUrlBase = `${window.location.origin}/accept-invite`;
+  const { data } = await api.post("/api/organizations/invite", { email, invite_url_base: inviteUrlBase });
   return data;
 };
 export const revokeInvite = async (inviteId) => {

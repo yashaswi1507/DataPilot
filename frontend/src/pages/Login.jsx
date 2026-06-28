@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, BarChart2, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, BarChart2, Mail, Lock, X } from "lucide-react";
 import toast from "react-hot-toast";
-import { login, googleLogin } from "../api/auth";
+import { login, googleLogin, forgotPassword } from "../api/auth";
 import useStore from "../store/useStore";
 import GoogleSignInButton from "../components/ui/GoogleSignInButton";
 
@@ -13,6 +13,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
+
+  // Forgot-password modal
+  const [showForgot,   setShowForgot]   = useState(false);
+  const [forgotEmail,  setForgotEmail]  = useState("");
+  const [forgotLoading,setForgotLoading]= useState(false);
+  const [forgotResult, setForgotResult] = useState(null); // { message, reset_link? }
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,6 +37,26 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return toast.error("Enter your email");
+    setForgotLoading(true);
+    try {
+      const res = await forgotPassword(forgotEmail);
+      setForgotResult(res);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not process request");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const closeForgotModal = () => {
+    setShowForgot(false);
+    setForgotEmail("");
+    setForgotResult(null);
   };
 
   const handleGoogleCredential = async (credential) => {
@@ -127,7 +153,7 @@ export default function Login() {
             <div style={{ marginBottom:20 }}>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
                 <label style={{ fontSize:13, fontWeight:500, color:"#374151" }}>Password</label>
-                <a href="#" style={{ fontSize:13, color:"#6B5FED", textDecoration:"none" }}>Forgot password?</a>
+                <a onClick={() => setShowForgot(true)} style={{ fontSize:13, color:"#6B5FED", textDecoration:"none", cursor:"pointer" }}>Forgot password?</a>
               </div>
               <div style={{ position:"relative" }}>
                 <Lock size={15} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#9CA3AF" }} />
@@ -177,6 +203,56 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {/* Forgot Password modal */}
+      {showForgot && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000 }} onClick={closeForgotModal}>
+          <div style={{ background:"white", borderRadius:12, padding:28, width:380, maxWidth:"90vw" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6 }}>
+              <h3 style={{ fontSize:17, fontWeight:700, margin:0 }}>Reset your password</h3>
+              <button onClick={closeForgotModal} style={{ background:"none", border:"none", cursor:"pointer", color:"#9CA3AF" }}><X size={18} /></button>
+            </div>
+
+            {!forgotResult ? (
+              <>
+                <p style={{ fontSize:13, color:"#6B7280", marginBottom:18 }}>
+                  Enter your email and we'll send you a link to reset your password.
+                </p>
+                <form onSubmit={handleForgotSubmit}>
+                  <div style={{ position:"relative", marginBottom:16 }}>
+                    <Mail size={15} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"#9CA3AF" }} />
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      style={{ width:"100%", paddingLeft:38, paddingRight:14, paddingTop:10, paddingBottom:10, border:"1px solid #E5E7EB", borderRadius:8, fontSize:13, outline:"none", boxSizing:"border-box" }}
+                      autoFocus
+                    />
+                  </div>
+                  <button type="submit" disabled={forgotLoading} style={{ width:"100%", background: forgotLoading?"#A89FF5":"#6B5FED", color:"white", border:"none", borderRadius:8, padding:"11px", fontSize:14, fontWeight:600, cursor: forgotLoading?"not-allowed":"pointer" }}>
+                    {forgotLoading ? "Sending..." : "Send Reset Link"}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div>
+                <p style={{ fontSize:13, color:"#374151", marginBottom: forgotResult.reset_link ? 12 : 0, lineHeight:1.5 }}>
+                  {forgotResult.message}
+                </p>
+                {forgotResult.reset_link && (
+                  <div style={{ background:"#F5F3FF", border:"1px solid #DDD6FE", borderRadius:8, padding:12, marginBottom:12, wordBreak:"break-all" }}>
+                    <a href={forgotResult.reset_link} style={{ fontSize:12, color:"#6B5FED" }}>{forgotResult.reset_link}</a>
+                  </div>
+                )}
+                <button onClick={closeForgotModal} className="btn btn-secondary" style={{ width:"100%", justifyContent:"center" }}>
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

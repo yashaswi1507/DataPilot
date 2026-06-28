@@ -47,7 +47,8 @@ export default function Reports() {
     if (!name.trim()) return toast.error("Enter a report name");
     setExp(true);
     try {
-      await exportReport(name.trim(), {}, [], [], format);
+      const rawData = (format === "excel" && activeData) ? { columns: activeData.columns, data: activeData.data } : null;
+      await exportReport(name.trim(), {}, [], [], format, rawData);
       store.addActivity(`Report "${name}" downloaded`);
       toast.success(`${format.toUpperCase()} downloaded!`);
       setName("");
@@ -109,6 +110,7 @@ export default function Reports() {
           <option value="pdf">PDF</option>
           <option value="html">HTML</option>
           <option value="ppt">PPT</option>
+          <option value="excel">Excel</option>
         </select>
         <button className="btn btn-primary" onClick={handleDownloadNow} disabled={exporting}>
           <Download size={14} /> {exporting ? "Exporting..." : "Download Now"}
@@ -143,6 +145,7 @@ export default function Reports() {
                 <option value="pdf">PDF</option>
                 <option value="html">HTML</option>
                 <option value="ppt">PPT</option>
+                <option value="excel">Excel</option>
               </select>
             </div>
           </div>

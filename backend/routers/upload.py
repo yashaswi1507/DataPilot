@@ -2,12 +2,13 @@ import io, sys, zipfile, base64
 import pandas as pd
 from pydantic import BaseModel
 from typing import List, Optional, Any
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from fastapi.responses import JSONResponse
 
 sys.path.append("..")
 from engines.dataset_profiler import DatasetProfiler
 from engines.preprocessing import DataPreprocessor
+from routers.auth import check_dataset_limit
 
 router = APIRouter()
 
@@ -93,6 +94,7 @@ async def upload_file(
     file: UploadFile = File(...),
     outlier_option: str = Form("No Action"),
     missing_option: str = Form("Auto"),
+    current_user: dict = Depends(check_dataset_limit),
 ):
     try:
         contents = await file.read()
@@ -191,7 +193,7 @@ class URLPayload(BaseModel):
     kaggle_key: Optional[str] = None
 
 @router.post("/url")
-async def upload_url(payload: URLPayload):
+async def upload_url(payload: URLPayload, current_user: dict = Depends(check_dataset_limit)):
     import requests as req
     from bs4 import BeautifulSoup
     url = payload.url.strip()

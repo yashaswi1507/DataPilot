@@ -30,6 +30,17 @@ export const googleLogin = async (credential, plan = "free", isStudentSelfDeclar
   return data;
 };
 
+export const forgotPassword = async (email) => {
+  const resetUrlBase = `${window.location.origin}/reset-password`;
+  const { data } = await api.post("/api/auth/forgot-password", { email, reset_url_base: resetUrlBase });
+  return data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const { data } = await api.post("/api/auth/reset-password", { token, new_password: newPassword });
+  return data;
+};
+
 export const acceptInvite = async (inviteToken, name, password) => {
   const { data } = await api.post("/api/organizations/accept-invite", { invite_token: inviteToken, name, password });
   return data;

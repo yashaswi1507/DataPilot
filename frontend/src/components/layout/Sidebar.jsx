@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import useStore from "../../store/useStore";
 import {
@@ -167,19 +167,50 @@ export default function Sidebar({ mobileOpen, onClose }) {
 function PlanBadge() {
   const store = useStore();
   const { plan, limit, used, pct } = store.getPlanInfo();
-  const planLabel = { free: "Free Plan", basic: "Basic Plan", pro: "Pro Plan" }[plan] || "Free Plan";
-  const limitLabel = limit >= 999999 ? "Unlimited" : `${used} / ${limit}`;
+  const tokenStatus = store.tokenStatus;
+  const isStudent = plan === "student";
+
+  useEffect(() => {
+    if (isStudent) store.fetchTokenStatus();
+  }, [isStudent]);
+
+  const planLabel = {
+    free: "Free Plan", basic: "Basic Plan", pro: "Pro Plan",
+    student: "🎓 Student Plan",
+    team: "Team Plan", business: "Business Plan", enterprise: "Enterprise Plan",
+  }[plan] || "Free Plan";
+
+  // Students are metered by daily actions (tokens), not dataset count —
+  // 200/day if their email matched a verified college domain at signup,
+  // 100/day otherwise. This comes from the backend (/api/auth/tokens)
+  // since the daily reset logic lives there.
+  let limitLabel, progressPct, showBar;
+  if (isStudent) {
+    if (tokenStatus && tokenStatus.is_student) {
+      limitLabel = `${tokenStatus.tokens_used} / ${tokenStatus.tokens_limit} actions today`;
+      progressPct = Math.min(100, Math.round((tokenStatus.tokens_used / tokenStatus.tokens_limit) * 100));
+      showBar = true;
+    } else {
+      limitLabel = "Loading usage...";
+      progressPct = 0;
+      showBar = false;
+    }
+  } else {
+    limitLabel = limit >= 999999 ? "Unlimited Datasets" : `${used} / ${limit} Datasets Used`;
+    progressPct = pct;
+    showBar = limit < 999999;
+  }
 
   return (
     <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px" }}>
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: "0 0 2px" }}>🖥 {planLabel}</p>
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", margin: "0 0 6px" }}>{limitLabel} Datasets Used</p>
-      {limit < 999999 && (
+      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: "0 0 2px" }}>{planLabel}</p>
+      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", margin: "0 0 6px" }}>{limitLabel}</p>
+      {showBar && (
         <div style={{ background: "rgba(255,255,255,0.1)", borderRadius: 4, height: 4, marginBottom: 8 }}>
-          <div style={{ background: pct >= 90 ? "#EF4444" : "#6B5FED", height: 4, borderRadius: 4, width: `${pct}%` }} />
+          <div style={{ background: progressPct >= 90 ? "#EF4444" : "#6B5FED", height: 4, borderRadius: 4, width: `${progressPct}%` }} />
         </div>
       )}
-      {plan !== "pro" && (
+      {plan !== "pro" && !isStudent && plan !== "team" && plan !== "business" && plan !== "enterprise" && (
         <button style={{ width: "100%", background: "rgba(107,95,237,0.2)", border: "1px solid rgba(107,95,237,0.4)", color: "#A89FF5", borderRadius: 8, padding: "7px", fontSize: 12, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <Zap size={12} /> Upgrade Plan
         </button>

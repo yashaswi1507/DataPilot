@@ -9,19 +9,49 @@ const useStore = create((set, get) => ({
   isLoggedIn: () => !!get().token,
 
   // ── Plan / usage state ───────────────────────────────────────
-  // PLAN_LIMITS: how many datasets each plan allows per period
-  planLimits: { free: 10, basic: 50, pro: 999999 },
+  // PLAN_LIMITS: how many datasets each plan allows per month.
+  // Student plans don't use this at all — they're capped by a daily
+  // token system instead (see tokenStatus below, synced from the
+  // backend's /api/auth/tokens endpoint), since "datasets" isn't the
+  // right unit for "how much can a student do today".
+  planLimits: { free: 10, basic: 50, pro: 999999, team: 999999, business: 999999, enterprise: 999999 },
   datasetsUsed: Number(localStorage.getItem("dp_datasets_used") || 0),
   incrementDatasetsUsed: () => {
     const next = get().datasetsUsed + 1;
     localStorage.setItem("dp_datasets_used", String(next));
     set({ datasetsUsed: next });
   },
+
+  // Daily token status for student accounts — populated by calling
+  // fetchTokenStatus() (Sidebar does this on mount). Null until fetched.
+  tokenStatus: null,
+  setTokenStatus: (t) => set({ tokenStatus: t }),
+
   getPlanInfo: () => {
     const plan  = get().user?.plan || "free";
     const limit = get().planLimits[plan] ?? 10;
     const used  = get().datasetsUsed;
     return { plan, limit, used, pct: Math.min(100, Math.round((used/limit)*100)) };
+  },
+
+  // Fetches the student's daily token usage/limit from the backend
+  // (/api/auth/tokens) — only meaningful for student-plan accounts.
+  // Sidebar calls this so it can show "X/200 actions today" instead of
+  // a dataset count, which isn't how the student plan is metered.
+  fetchTokenStatus: async () => {
+    const token = localStorage.getItem("dp_token");
+    if (!token) return;
+    try {
+      const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const res = await fetch(`${BASE_URL}/api/auth/tokens`, {
+        headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ tokenStatus: data });
+    } catch (e) {
+      // Fail silently — token status is a nice-to-have display, not critical
+    }
   },
 
   // ── Dataset state ─────────────────────────────────────────

@@ -69,6 +69,7 @@ class CreateOrgPayload(BaseModel):
 
 class InvitePayload(BaseModel):
     email: EmailStr
+    invite_url_base: str = "https://datapilot-ruddy.vercel.app/accept-invite"
 
 
 class AcceptInvitePayload(BaseModel):
@@ -219,6 +220,11 @@ def invite_member(payload: InvitePayload, user=Depends(get_current_user)):
         if cur.fetchone():
             raise HTTPException(400, "This email is already a DataPilot user. Ask them to join your org from their account settings instead.")
 
+        cur.execute("SELECT name FROM organizations WHERE id = %s", (org_id,))
+        org_name = cur.fetchone()["name"]
+        cur.execute("SELECT name FROM users WHERE id = %s", (user["user_id"],))
+        inviter_name = cur.fetchone()["name"]
+
         token = secrets.token_urlsafe(24)
         cur.execute(
             """INSERT INTO team_invitations (organization_id, invited_email, invited_by_user_id, invite_token)
@@ -227,13 +233,30 @@ def invite_member(payload: InvitePayload, user=Depends(get_current_user)):
         )
         conn.commit()
 
-        # NOTE: actual email delivery isn't wired up yet (same limitation
-        # as scheduled reports) — for now the invite link must be shared
-        # manually. Frontend shows it directly to the admin to copy/send.
+        invite_link = f"{payload.invite_url_base.rstrip('/')}?token={token}"
+
+        from email_utils import send_team_invite_email, is_email_configured
+        email_sent = False
+        if is_email_configured():
+            email_sent = send_team_invite_email(payload.email.lower(), invite_link, org_name, inviter_name)
+
+        if email_sent:
+            return {
+                "success": True,
+                "invite_link": invite_link,
+                "message": f"Invite emailed to {payload.email}.",
+            }
+
+        # Email not configured or failed to send — return the link
+        # directly so the admin can still share it manually.
         return {
             "success": True,
-            "invite_link": f"/accept-invite?token={token}",
-            "message": f"Invite created for {payload.email}. Share this link with them (email delivery not yet automated).",
+            "invite_link": invite_link,
+            "message": f"Invite created for {payload.email}. " + (
+                "Email sending isn't configured — share this link with them directly."
+                if not is_email_configured() else
+                "Email delivery failed — share this link with them directly."
+            ),
         }
     except HTTPException:
         raise

@@ -19,6 +19,8 @@ import Reports       from "./pages/Reports";
 import Settings      from "./pages/Settings";
 import Login         from "./pages/Login";
 import Signup        from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
+import AcceptInvite  from "./pages/AcceptInvite";
 
 function Guard({ children }) {
   return localStorage.getItem("dp_token") ? children : <Navigate to="/login" replace />;
@@ -50,6 +52,8 @@ export default function App() {
       <Routes>
         <Route path="/login"  element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/accept-invite"  element={<AcceptInvite />} />
         <Route path="/"                   element={<P page={Dashboard} />} />
         <Route path="/overview"           element={<P page={Overview} />} />
         <Route path="/insights"           element={<P page={Analytics} />} />
